@@ -1,4 +1,6 @@
-use std::io;
+use std::{error::Error, str::FromStr};
+
+use adventofcode_2022::CustomError;
 
 #[derive(Eq, PartialEq)]
 enum HandShape {
@@ -33,83 +35,86 @@ impl HandShape {
     }
 }
 
-impl TryFrom<&str> for HandShape {
-    type Error = String;
+impl FromStr for HandShape {
+    type Err = CustomError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "A" | "X" => Ok(Self::Rock),
             "B" | "Y" => Ok(Self::Paper),
             "C" | "Z" => Ok(Self::Scissors),
-            other => Err(format!("{other} does not correspond to a hand shape!")),
+            other => Err(CustomError::new(&format!(
+                "{other} does not correspond to a hand shape!"
+            ))),
         }
     }
 }
 
-struct Game {
-    player1: HandShape,
-    player2: HandShape,
-}
-
-impl FromIterator<HandShape> for Game {
-    fn from_iter<T: IntoIterator<Item = HandShape>>(iter: T) -> Self {
-        let mut iter = iter.into_iter();
-
-        Self {
-            player1: iter
-                .next()
-                .expect("A game requires more than 0 hand shapes!"),
-            player2: iter
-                .next()
-                .expect("A game requires more than 1 hand shape!"),
-        }
-    }
-}
-
-fn main() -> io::Result<()> {
+fn main() -> Result<(), Box<dyn Error>> {
     let input = std::fs::read_to_string("src/bin/day2/input.txt")?;
 
     part1(&input);
-    part2(&input);
+    part2(&input)?;
 
     Ok(())
 }
 
 fn part1(input: &str) {
+    struct Game {
+        player1: HandShape,
+        player2: HandShape,
+    }
+
+    impl Game {
+        fn score(&self) -> u32 {
+            if self.player2.wins_against() == self.player1 {
+                6
+            } else if self.player1 == self.player2 {
+                3
+            } else {
+                0
+            }
+        }
+    }
+
     let total_score: u32 = input
         .lines()
-        .map(|game| {
-            game.split(' ')
-                .flat_map(HandShape::try_from)
-                .collect::<Game>()
-        })
-        .map(|game| {
-            let base_score = game.player2.base_score();
+        .flat_map(|game| {
+            let mut hand_shapes = game.split(' ').flat_map(str::parse::<HandShape>);
 
-            let game_score = if game.player2.wins_against() == game.player1 {
-                6
-            } else if game.player1.wins_against() == game.player2 {
-                0
-            } else {
-                3
-            };
-
-            base_score + game_score
+            Ok::<_, CustomError>(Game {
+                player1: hand_shapes.next().ok_or_else(|| {
+                    CustomError::new("Tried to construct a game, but was missing the 1st player.")
+                })?,
+                player2: hand_shapes.next().ok_or_else(|| {
+                    CustomError::new("Tried to construct a game, but was missing the 2nd player.")
+                })?,
+            })
         })
+        .map(|game| game.player2.base_score() + game.score())
         .sum();
 
     println!("Part 1 answer = {total_score}");
 }
 
-fn part2(input: &str) {
+fn part2(input: &str) -> Result<(), Box<dyn Error>> {
     let total_score: u32 = input
         .lines()
-        .map(|game| {
-            let mut hand_shapes = game.split(' ');
+        .flat_map(|game| {
+            let mut game_components = game.split(' ');
 
-            [hand_shapes.next().unwrap(), hand_shapes.next().unwrap()]
+            Ok::<_, CustomError>([
+                game_components.next().ok_or_else(|| {
+                    CustomError::new(
+                        "Tried to construct a game, but was missing the opponent's choice",
+                    )
+                })?,
+                game_components.next().ok_or_else(|| {
+                    CustomError::new("Tried to construct a game, but was missing the result.")
+                })?,
+            ])
         })
-        .map(|[opponent_choice, result]| {
+        .flat_map(|[opponent_choice, result]| {
             enum GameResult {
                 Win,
                 Draw,
@@ -117,14 +122,15 @@ fn part2(input: &str) {
             }
 
             let game_result = match result {
-                "X" => GameResult::Loss,
-                "Y" => GameResult::Draw,
-                "Z" => GameResult::Win,
-                other => panic!("{other} is not a valid game result!"),
-            };
+                "X" => Ok(GameResult::Loss),
+                "Y" => Ok(GameResult::Draw),
+                "Z" => Ok(GameResult::Win),
+                other => Err(CustomError::new(format!(
+                    "{other} is not a valid game result!"
+                ))),
+            }?;
 
-            let opponent_shape =
-                HandShape::try_from(opponent_choice).expect("Invalid opponent choice!");
+            let opponent_shape = HandShape::from_str(opponent_choice)?;
 
             let (base_score, game_score) = match game_result {
                 GameResult::Win => (opponent_shape.loses_against().base_score(), 6),
@@ -132,9 +138,11 @@ fn part2(input: &str) {
                 GameResult::Loss => (opponent_shape.wins_against().base_score(), 0),
             };
 
-            base_score + game_score
+            Ok::<_, CustomError>(base_score + game_score)
         })
         .sum();
 
     println!("Part 2 answer = {total_score}");
+
+    Ok(())
 }
