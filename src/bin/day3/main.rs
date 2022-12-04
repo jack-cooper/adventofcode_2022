@@ -1,9 +1,6 @@
-use std::{collections::HashSet, fs, io};
+use std::{collections::HashSet, error::Error, fs};
 
-fn main() -> io::Result<()> {
-    // Day 3!
-
-    // Read in data from file
+fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("src/bin/day3/input.txt")?;
 
     part1(&input);
@@ -13,7 +10,6 @@ fn main() -> io::Result<()> {
 }
 
 fn part1(input: &str) {
-    // Split input string into individual "rucksacks" and "compartments"
     let priority_sum: u32 = input
         .lines()
         .map(|rucksack| {
@@ -23,7 +19,7 @@ fn part1(input: &str) {
 
             (second, first_compartment_item_types)
         })
-        .map(find_duplicate_item_type)
+        .flat_map(find_duplicate_item_type)
         .map(get_priority)
         .sum();
 
@@ -43,23 +39,24 @@ fn part2(input: &str) {
 
             let shared_item_types: HashSet<_> = first_item_types
                 .intersection(&second_item_types)
-                .map(|x| *x)
+                .copied()
                 .collect();
 
             (squad_rucksacks[2], shared_item_types)
         })
-        .map(find_duplicate_item_type)
+        .flat_map(find_duplicate_item_type)
         .map(get_priority)
         .sum();
 
     println!("Part 2 answer = {priority_sum}");
 }
 
-fn find_duplicate_item_type((container, already_seen_items): (&str, HashSet<char>)) -> char {
+fn find_duplicate_item_type(
+    (container, already_seen_items): (&str, HashSet<char>),
+) -> Option<char> {
     container
         .chars()
         .find(|char| already_seen_items.contains(char))
-        .unwrap()
 }
 
 fn get_priority(item: char) -> u32 {
