@@ -1,18 +1,16 @@
-use std::{error::Error, fmt};
+use std::{borrow::Cow, error::Error, fmt};
 
 pub type AnyResult = Result<(), Box<dyn Error>>;
 
 #[derive(Debug)]
-pub struct CustomError(String);
-
-impl CustomError {
-    pub fn new(msg: impl ToString) -> Self {
-        Self(msg.to_string())
-    }
+pub struct CustomError<'a> {
+    pub msg: Cow<'a, str>,
 }
 
-impl fmt::Display for CustomError {
+impl Error for CustomError<'_> {}
+
+impl fmt::Display for CustomError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CustomError({})", self.0)
+        write!(f, "CustomError({})", self.msg)
     }
 }
