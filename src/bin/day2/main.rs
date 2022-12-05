@@ -41,7 +41,7 @@ impl HandShape {
 }
 
 impl FromStr for HandShape {
-    type Err = CustomError<'static>;
+    type Err = CustomError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
