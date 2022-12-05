@@ -50,21 +50,30 @@ fn capture_group_to_usize(captures: &Captures, name: &str) -> Result<usize, Cust
         })
 }
 
+fn command_to_values(command: &str) -> Result<(usize, usize, usize), CustomError> {
+    let captures = COMMAND_REGEX.captures(command).ok_or(CustomError {
+        msg: "Command regex failed to parse a command.".into(),
+    })?;
+
+    let amount = capture_group_to_usize(&captures, "amount")?;
+    let source = capture_group_to_usize(&captures, "source")? - 1;
+    let destination = capture_group_to_usize(&captures, "destination")? - 1;
+
+    Ok::<_, CustomError>((amount, source, destination))
+}
+
+fn tops_of_stacks(cargo_bay: &[Vec<Crate>]) -> String {
+    cargo_bay
+        .into_iter()
+        .filter_map(|stack| stack.last().map(|cargo_crate| cargo_crate.label))
+        .collect()
+}
+
 fn part1(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
     input
         .lines()
         .skip(10)
-        .map(|command| {
-            let captures = COMMAND_REGEX.captures(command).ok_or(CustomError {
-                msg: "Command regex failed to parse a command.".into(),
-            })?;
-
-            let amount = capture_group_to_usize(&captures, "amount")?;
-            let source = capture_group_to_usize(&captures, "source")? - 1;
-            let destination = capture_group_to_usize(&captures, "destination")? - 1;
-
-            Ok::<_, CustomError>((amount, source, destination))
-        })
+        .map(command_to_values)
         .try_for_each(|command| {
             command.map(|(amount, source_index, destination_index)| {
                 (0..amount).for_each(|_| {
@@ -77,10 +86,7 @@ fn part1(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
             })
         })?;
 
-    let tops_of_stacks: String = cargo_bay
-        .into_iter()
-        .filter_map(|mut stack| stack.pop().map(|cargo_crate| cargo_crate.label))
-        .collect();
+    let tops_of_stacks: String = tops_of_stacks(&cargo_bay);
 
     println!("Part 1 answer = {tops_of_stacks}");
 
@@ -91,17 +97,7 @@ fn part2(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
     input
         .lines()
         .skip(10)
-        .map(|command| {
-            let captures = COMMAND_REGEX.captures(command).ok_or(CustomError {
-                msg: "Command regex failed to parse a command.".into(),
-            })?;
-
-            let amount = capture_group_to_usize(&captures, "amount")?;
-            let source = capture_group_to_usize(&captures, "source")? - 1;
-            let destination = capture_group_to_usize(&captures, "destination")? - 1;
-
-            Ok::<_, CustomError>((amount, source, destination))
-        })
+        .map(command_to_values)
         .try_for_each(|command| {
             command.map(|(amount, source_index, destination_index)| {
                 let source = &mut cargo_bay[source_index];
@@ -112,10 +108,7 @@ fn part2(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
             })
         })?;
 
-    let tops_of_stacks: String = cargo_bay
-        .into_iter()
-        .filter_map(|mut stack| stack.pop().map(|cargo_crate| cargo_crate.label))
-        .collect();
+    let tops_of_stacks: String = tops_of_stacks(&cargo_bay);
 
     println!("Part 2 answer = {tops_of_stacks}");
 
