@@ -11,6 +11,8 @@ fn main() -> AnyResult {
     Ok(())
 }
 
+/// Returns the total calories an elf is holding, or an error
+/// if he was holding a non-numerical (or negative) calorie snack.
 fn elf_to_calories(elf: &str) -> Result<u32, ParseIntError> {
     elf.lines().map(str::parse::<u32>).sum()
 }
@@ -34,6 +36,7 @@ fn part2(input: &str) -> AnyResult {
 
     let maxima = elves
         .map(elf_to_calories)
+        // Iterate through all elves, storing the 3 highest values we've seen so far
         .try_fold([0, 0, 0], |mut maxima, calories| {
             calories.map(|calories| {
                 if calories > maxima[2] {
