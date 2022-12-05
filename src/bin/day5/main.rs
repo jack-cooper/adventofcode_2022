@@ -3,7 +3,7 @@ use std::fs;
 use once_cell::sync::Lazy;
 
 use adventofcode_2022::{AnyResult, CustomError};
-use regex::Regex;
+use regex::{Captures, Regex};
 
 static COMMAND_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new("move (?P<amount>\\d+) from (?P<source>\\d) to (?P<destination>\\d)").unwrap()
@@ -37,6 +37,19 @@ fn main() -> AnyResult {
     Ok(())
 }
 
+fn capture_group_to_usize(captures: &Captures, name: &str) -> Result<usize, CustomError> {
+    captures
+        .name(name)
+        .ok_or(CustomError {
+            msg: format!("Command was missing a(n) `${name}`.").into(),
+        })?
+        .as_str()
+        .parse::<usize>()
+        .map_err(|_| CustomError {
+            msg: "Failed to parse a command digit as a usize.".into(),
+        })
+}
+
 fn part1(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
     input
         .lines()
@@ -46,37 +59,9 @@ fn part1(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
                 msg: "Command regex failed to parse a command.".into(),
             })?;
 
-            // The below unwraps are safe to do as they are from a
-            // Regex "\d" capture
-
-            let amount = captures
-                .name("amount")
-                .ok_or(CustomError {
-                    msg: "Command was missing an `amount`.".into(),
-                })?
-                .as_str()
-                .parse::<usize>()
-                .unwrap();
-
-            let source = captures
-                .name("source")
-                .ok_or(CustomError {
-                    msg: "Command was missing a `source`.".into(),
-                })?
-                .as_str()
-                .parse::<usize>()
-                .unwrap()
-                - 1;
-
-            let destination = captures
-                .name("destination")
-                .ok_or(CustomError {
-                    msg: "Command was missing a `destination`.".into(),
-                })?
-                .as_str()
-                .parse::<usize>()
-                .unwrap()
-                - 1;
+            let amount = capture_group_to_usize(&captures, "amount")?;
+            let source = capture_group_to_usize(&captures, "source")? - 1;
+            let destination = capture_group_to_usize(&captures, "destination")? - 1;
 
             Ok::<_, CustomError>((amount, source, destination))
         })
@@ -111,37 +96,9 @@ fn part2(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
                 msg: "Command regex failed to parse a command.".into(),
             })?;
 
-            // The below unwraps are safe to do as they are from a
-            // Regex "\d" capture
-
-            let amount = captures
-                .name("amount")
-                .ok_or(CustomError {
-                    msg: "Command was missing an `amount`.".into(),
-                })?
-                .as_str()
-                .parse::<usize>()
-                .unwrap();
-
-            let source = captures
-                .name("source")
-                .ok_or(CustomError {
-                    msg: "Command was missing a `source`.".into(),
-                })?
-                .as_str()
-                .parse::<usize>()
-                .unwrap()
-                - 1;
-
-            let destination = captures
-                .name("destination")
-                .ok_or(CustomError {
-                    msg: "Command was missing a `destination`.".into(),
-                })?
-                .as_str()
-                .parse::<usize>()
-                .unwrap()
-                - 1;
+            let amount = capture_group_to_usize(&captures, "amount")?;
+            let source = capture_group_to_usize(&captures, "source")? - 1;
+            let destination = capture_group_to_usize(&captures, "destination")? - 1;
 
             Ok::<_, CustomError>((amount, source, destination))
         })
