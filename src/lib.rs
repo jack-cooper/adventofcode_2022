@@ -14,3 +14,10 @@ impl fmt::Display for CustomError {
         write!(f, "CustomError({})", self.msg)
     }
 }
+
+pub fn flatten_result<T, E>(result: Result<Result<T, E>, E>) -> Result<T, E> {
+    match result {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(err)) | Err(err) => Err(err),
+    }
+}

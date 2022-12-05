@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use adventofcode_2022::{AnyResult, CustomError};
+use adventofcode_2022::{flatten_result, AnyResult, CustomError};
 
 /// One of the three choices in the game Rock, Paper, Scissors
 #[derive(Eq, PartialEq)]
@@ -102,11 +102,7 @@ fn part1(input: &str) -> AnyResult {
                 })
             })
         })
-        // Flatten the 2 layers of errors above back into a single `Result`
-        .map(|game| match game {
-            Ok(Ok(game)) => Ok(game),
-            Ok(Err(err)) | Err(err) => Err(err),
-        })
+        .map(flatten_result)
         // Add the base score and game score
         .map(|game| game.map(|game| game.player2.base_score() + game.score()))
         // Sum the score of each game
@@ -156,10 +152,7 @@ fn part2(input: &str) -> AnyResult {
             })
         })
         // Flatten the 2 layers of errors above back into a single `Result`
-        .map(|game| match game {
-            Ok(Ok(game)) => Ok(game),
-            Ok(Err(err)) | Err(err) => Err(err),
-        })
+        .map(flatten_result)
         // Sum the score of each game
         .sum::<Result<u32, _>>()?;
 
