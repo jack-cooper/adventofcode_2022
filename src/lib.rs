@@ -1,4 +1,6 @@
-use std::fmt;
+use std::{error::Error, fmt};
+
+pub type AnyResult = Result<(), Box<dyn Error>>;
 
 #[derive(Debug)]
 pub struct CustomError(String);
