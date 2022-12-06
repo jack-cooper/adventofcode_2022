@@ -5,15 +5,13 @@ use adventofcode_2022::{AnyResult, CustomError};
 fn main() -> AnyResult {
     let input = fs::read_to_string("src/bin/day6/input.txt")?;
 
-    let datastream: Vec<char> = input.chars().collect();
-
-    part1(&datastream)?;
-    part2(&datastream)?;
+    part1(&input)?;
+    part2(&input)?;
 
     Ok(())
 }
 
-fn find_unique_window_index(datastream: &[char], size: usize) -> Option<usize> {
+fn find_unique_window_index(datastream: &[u8], size: usize) -> Option<usize> {
     datastream
         .windows(size)
         .enumerate()
@@ -27,20 +25,22 @@ fn find_unique_window_index(datastream: &[char], size: usize) -> Option<usize> {
         })
 }
 
-fn part1(datastream: &[char]) -> AnyResult {
-    let start_of_packet_marker = find_unique_window_index(datastream, 4).ok_or(CustomError {
-        msg: "No valid start-of-packet marker detected.".into(),
-    })?;
+fn part1(input: &str) -> AnyResult {
+    let start_of_packet_marker =
+        find_unique_window_index(input.as_bytes(), 4).ok_or(CustomError {
+            msg: "No valid start-of-packet marker detected.".into(),
+        })?;
 
     println!("Part 1 answer = {start_of_packet_marker}");
 
     Ok(())
 }
 
-fn part2(datastream: &[char]) -> AnyResult {
-    let start_of_message_marker = find_unique_window_index(datastream, 14).ok_or(CustomError {
-        msg: "No valid start-of-message marker detected.".into(),
-    })?;
+fn part2(input: &str) -> AnyResult {
+    let start_of_message_marker =
+        find_unique_window_index(input.as_bytes(), 14).ok_or(CustomError {
+            msg: "No valid start-of-message marker detected.".into(),
+        })?;
 
     println!("Part 2 answer = {start_of_message_marker}");
 
