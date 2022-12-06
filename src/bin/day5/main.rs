@@ -2,7 +2,7 @@ use std::fs;
 
 use once_cell::sync::Lazy;
 
-use adventofcode_2022::{AnyResult, CustomError};
+use adventofcode_2022::{flatten_result, AnyResult, CustomError};
 use regex::{Captures, Regex};
 
 static COMMAND_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -17,6 +17,9 @@ struct Crate {
 fn main() -> AnyResult {
     let input = fs::read_to_string("src/bin/day5/input.txt")?;
 
+    // This is a clippy false positive - we can't call the below `.rev()` without it
+    // as the Take<Lines<_>> doesn't implement `DoubleEndedIterator`
+    #[allow(clippy::needless_collect)]
     let starting_crates: Vec<_> = input.lines().take(8).collect();
 
     let initial_cargo_bay = starting_crates
@@ -56,6 +59,8 @@ fn command_to_values(command: &str) -> Result<(usize, usize, usize), CustomError
     })?;
 
     let amount = capture_group_to_usize(&captures, "amount")?;
+
+    // The source/destination are one-indexed in the input file, but zero-indexed in our Vec
     let source = capture_group_to_usize(&captures, "source")? - 1;
     let destination = capture_group_to_usize(&captures, "destination")? - 1;
 
@@ -64,7 +69,7 @@ fn command_to_values(command: &str) -> Result<(usize, usize, usize), CustomError
 
 fn tops_of_stacks(cargo_bay: &[Vec<Crate>]) -> String {
     cargo_bay
-        .into_iter()
+        .iter()
         .filter_map(|stack| stack.last().map(|cargo_crate| cargo_crate.label))
         .collect()
 }
@@ -75,15 +80,21 @@ fn part1(input: &str, mut cargo_bay: Vec<Vec<Crate>>) -> AnyResult {
         .skip(10)
         .map(command_to_values)
         .try_for_each(|command| {
-            command.map(|(amount, source_index, destination_index)| {
-                (0..amount).for_each(|_| {
-                    let cargo_crate = cargo_bay[source_index]
-                        .pop()
-                        .expect("Attempted to remove a crate from an empty stack.");
+            let command_output = command.map(|(amount, source_index, destination_index)| {
+                (0..amount).try_for_each(|_| {
+                    let cargo_crate = cargo_bay[source_index].pop().ok_or(CustomError {
+                        msg: "Tried to remove a crate from an empty stack.".into(),
+                    })?;
 
                     cargo_bay[destination_index].push(cargo_crate);
-                });
-            })
+
+                    Ok::<_, CustomError>(())
+                })?;
+
+                Ok(())
+            });
+
+            flatten_result(command_output)
         })?;
 
     let tops_of_stacks: String = tops_of_stacks(&cargo_bay);
