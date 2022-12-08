@@ -8,34 +8,40 @@ struct Grid {
 }
 
 impl Grid {
-    fn trees_above(&self, index: usize) -> impl Iterator<Item = &u32> {
-        self.trees
-            .iter()
-            .skip(index % self.size)
-            .step_by(self.size)
-            .take(index / self.size)
-            .rev()
+    fn trees_above(&self, index: usize) -> Box<dyn Iterator<Item = &u32> + '_> {
+        Box::new(
+            self.trees
+                .iter()
+                .skip(index % self.size)
+                .step_by(self.size)
+                .take(index / self.size)
+                .rev(),
+        )
     }
 
-    fn trees_below(&self, index: usize) -> impl Iterator<Item = &u32> {
-        self.trees.iter().skip(index).step_by(self.size).skip(1)
+    fn trees_below(&self, index: usize) -> Box<dyn Iterator<Item = &u32> + '_> {
+        Box::new(self.trees.iter().skip(index).step_by(self.size).skip(1))
     }
 
-    fn trees_left_of(&self, index: usize) -> impl Iterator<Item = &u32> {
-        self.trees
-            .iter()
-            .skip((index / self.size) * self.size)
-            .take(index % self.size)
-            .rev()
+    fn trees_left_of(&self, index: usize) -> Box<dyn Iterator<Item = &u32> + '_> {
+        Box::new(
+            self.trees
+                .iter()
+                .skip((index / self.size) * self.size)
+                .take(index % self.size)
+                .rev(),
+        )
     }
 
-    fn trees_right_of(&self, index: usize) -> impl Iterator<Item = &u32> {
-        self.trees
-            .iter()
-            .skip(index + 1)
-            // The below will never overflow as we use the `is_on_edge_of_grid`
-            // function to guard before its use
-            .take((self.size - index % self.size) - 1)
+    fn trees_right_of(&self, index: usize) -> Box<dyn Iterator<Item = &u32> + '_> {
+        Box::new(
+            self.trees
+                .iter()
+                .skip(index + 1)
+                // The below will never overflow as we use the `is_on_edge_of_grid`
+                // function to guard before its use
+                .take((self.size - index % self.size) - 1),
+        )
     }
 }
 
@@ -110,57 +116,24 @@ fn part2(grid: &Grid) -> AnyResult {
         .enumerate()
         .filter(|&(index, _)| !is_on_edge_of_grid(index, grid.size))
         .map(|(index, height)| {
-            let visible_trees_above = {
-                let mut visible_trees_above = grid
-                    .trees_above(index)
-                    .take_while(|&other_height| other_height < height)
-                    .count();
+            let get_line_count =
+                |line_function: fn(&Grid, usize) -> Box<dyn Iterator<Item = &u32> + '_>| {
+                    let mut count = 0;
 
-                if index / grid.size - visible_trees_above > 0 {
-                    visible_trees_above += 1;
-                }
+                    for other_height in line_function(grid, index) {
+                        count += 1;
+                        if other_height >= height {
+                            break;
+                        }
+                    }
 
-                visible_trees_above
-            };
+                    count
+                };
 
-            let visible_trees_below = {
-                let mut visible_trees_below = grid
-                    .trees_below(index)
-                    .take_while(|&other_height| other_height < height)
-                    .count();
-
-                if index / grid.size + visible_trees_below < grid.size - 1 {
-                    visible_trees_below += 1;
-                }
-
-                visible_trees_below
-            };
-
-            let visible_trees_left = {
-                let mut visible_trees_left = grid
-                    .trees_left_of(index)
-                    .take_while(|&other_height| other_height < height)
-                    .count();
-
-                if index % grid.size - visible_trees_left > 0 {
-                    visible_trees_left += 1;
-                }
-
-                visible_trees_left
-            };
-
-            let visible_trees_right = {
-                let mut visible_trees_right = grid
-                    .trees_right_of(index)
-                    .take_while(|&other_height| other_height < height)
-                    .count();
-
-                if index % grid.size + visible_trees_right < grid.size - 1 {
-                    visible_trees_right += 1;
-                }
-
-                visible_trees_right
-            };
+            let visible_trees_above = get_line_count(Grid::trees_above);
+            let visible_trees_below = get_line_count(Grid::trees_below);
+            let visible_trees_left = get_line_count(Grid::trees_left_of);
+            let visible_trees_right = get_line_count(Grid::trees_right_of);
 
             visible_trees_above * visible_trees_below * visible_trees_left * visible_trees_right
         })
