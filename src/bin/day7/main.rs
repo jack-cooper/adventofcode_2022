@@ -26,7 +26,7 @@ impl<'a> TryFrom<&'a str> for Command<'a> {
             "$ ls" => Ok(Command::List),
             "$ cd .." => Ok(Command::ChangeDir(CdArgument::ParentDirectory)),
             other => other
-                .rsplit_once(" ")
+                .rsplit_once(' ')
                 .map(|(_, directory_name)| {
                     Command::ChangeDir(CdArgument::DirectoryName(directory_name))
                 })
@@ -44,7 +44,7 @@ fn construct_file_system<'a, 'b>(
     let mut lines = input.lines().map(str::trim);
 
     let Some("$ cd /") = lines.next() else {
-        return Err(CustomError { msg: "The first line was malformed.".into()}.into());
+        return Err(CustomError { msg: "The first line was malformed.".into()});
     };
 
     let mut current_node_id = arena.new_node(FileSystemEntity::Directory("/"));
@@ -94,8 +94,7 @@ fn construct_file_system<'a, 'b>(
             } else {
                 return Err(CustomError {
                     msg: "Found malformed `ls` descriptor.".into(),
-                }
-                .into());
+                });
             };
 
             current_node_id.append(new_file_system_entity_id, arena);
@@ -121,13 +120,10 @@ fn part1(input: &str) -> AnyResult {
 
     let small_directory_size_sum: usize = root_id
         .descendants(arena)
-        .filter_map(|node_id| {
+        .filter(|&node_id| {
             let file_system_entity = arena[node_id].get();
 
-            match file_system_entity {
-                FileSystemEntity::File(_, _) => None,
-                FileSystemEntity::Directory(_) => Some(node_id),
-            }
+            matches!(file_system_entity, FileSystemEntity::Directory(_))
         })
         .map(|directory_id| {
             directory_id
@@ -136,7 +132,7 @@ fn part1(input: &str) -> AnyResult {
                     let file_system_entity = arena[node_id].get();
 
                     match file_system_entity {
-                        FileSystemEntity::File(_, size) => Some(*size),
+                        FileSystemEntity::File(_, size) => Some(size),
                         FileSystemEntity::Directory(_) => None,
                     }
                 })
@@ -157,13 +153,10 @@ fn part2(input: &str) -> AnyResult {
 
     let mut directory_sizes: Vec<usize> = root_id
         .descendants(arena)
-        .filter_map(|node_id| {
+        .filter(|&node_id| {
             let file_system_entity = arena[node_id].get();
 
-            match file_system_entity {
-                FileSystemEntity::File(_, _) => None,
-                FileSystemEntity::Directory(_) => Some(node_id),
-            }
+            matches!(file_system_entity, FileSystemEntity::Directory(_))
         })
         .map(|directory_id| {
             directory_id
@@ -172,7 +165,7 @@ fn part2(input: &str) -> AnyResult {
                     let file_system_entity = arena[node_id].get();
 
                     match file_system_entity {
-                        FileSystemEntity::File(_, size) => Some(*size),
+                        FileSystemEntity::File(_, size) => Some(size),
                         FileSystemEntity::Directory(_) => None,
                     }
                 })
