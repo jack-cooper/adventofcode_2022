@@ -81,38 +81,24 @@ fn part1(motions: &[Motion]) -> AnyResult {
     let (mut head_position, mut tail_position) = (Position::ZERO, Position::ZERO);
 
     for motion in motions {
-        match motion {
-            Motion::X(magnitude) => {
-                let direction = magnitude.signum();
+        let magnitude = match motion {
+            Motion::X(magnitude) => magnitude,
+            Motion::Y(magnitude) => magnitude,
+        };
+        let direction = magnitude.signum();
 
-                for _ in 0..magnitude.abs() {
-                    head_position.x += direction;
-
-                    if let Some(movement) = head_position.required_catchup_movement(&tail_position)
-                    {
-                        tail_position.x += movement.x;
-                        tail_position.y += movement.y;
-                    }
-
-                    visited_positions.insert(tail_position);
-                }
+        for _ in 0..magnitude.abs() {
+            match motion {
+                Motion::X(_) => head_position.x += direction,
+                Motion::Y(_) => head_position.y += direction,
             }
 
-            Motion::Y(magnitude) => {
-                let direction = magnitude.signum();
-
-                for _ in 0..magnitude.abs() {
-                    head_position.y += direction;
-
-                    if let Some(movement) = head_position.required_catchup_movement(&tail_position)
-                    {
-                        tail_position.x += movement.x;
-                        tail_position.y += movement.y;
-                    }
-
-                    visited_positions.insert(tail_position);
-                }
+            if let Some(movement) = head_position.required_catchup_movement(&tail_position) {
+                tail_position.x += movement.x;
+                tail_position.y += movement.y;
             }
+
+            visited_positions.insert(tail_position);
         }
     }
 
@@ -129,54 +115,33 @@ fn part2(motions: &[Motion]) -> AnyResult {
     let mut positions = [Position::ZERO; 10];
 
     for motion in motions {
-        match motion {
-            Motion::X(magnitude) => {
-                let direction = magnitude.signum();
+        let magnitude = match motion {
+            Motion::X(magnitude) => magnitude,
+            Motion::Y(magnitude) => magnitude,
+        };
+        let direction = magnitude.signum();
 
-                for _ in 0..magnitude.abs() {
-                    positions[0].x += direction;
+        for _ in 0..magnitude.abs() {
+            match motion {
+                Motion::X(_) => positions[0].x += direction,
+                Motion::Y(_) => positions[0].y += direction,
+            }
 
-                    for index in 1..positions.len() {
-                        let (start, end) = positions.split_at_mut(index);
+            for index in 1..positions.len() {
+                let (start, end) = positions.split_at_mut(index);
 
-                        let knot_front = start.last().unwrap();
-                        let knot_back = end.first_mut().unwrap();
+                let knot_front = start.last().unwrap();
+                let knot_back = end.first_mut().unwrap();
 
-                        if let Some(movement) = knot_front.required_catchup_movement(knot_back) {
-                            knot_back.x += movement.x;
-                            knot_back.y += movement.y;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    tail_visited_positions.insert(positions[9]);
+                if let Some(movement) = knot_front.required_catchup_movement(knot_back) {
+                    knot_back.x += movement.x;
+                    knot_back.y += movement.y;
+                } else {
+                    break;
                 }
             }
 
-            Motion::Y(magnitude) => {
-                let direction = magnitude.signum();
-
-                for _ in 0..magnitude.abs() {
-                    positions[0].y += direction;
-
-                    for index in 1..positions.len() {
-                        let (start, end) = positions.split_at_mut(index);
-
-                        let knot_front = start.last().unwrap();
-                        let knot_back = end.first_mut().unwrap();
-
-                        if let Some(movement) = knot_front.required_catchup_movement(knot_back) {
-                            knot_back.x += movement.x;
-                            knot_back.y += movement.y;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    tail_visited_positions.insert(positions[9]);
-                }
-            }
+            tail_visited_positions.insert(positions[9]);
         }
     }
 
