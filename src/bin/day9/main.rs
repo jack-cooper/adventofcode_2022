@@ -30,31 +30,10 @@ impl Position {
     const ZERO: Self = Self { x: 0, y: 0 };
 
     fn required_catchup_movement(&self, tail_position: &Position) -> Option<Movement> {
-        if self.x == tail_position.x {
-            if self.y > tail_position.y + 1 {
-                Some(Movement::new(0, 1))
-            } else if self.y < tail_position.y - 1 {
-                Some(Movement::new(0, -1))
-            } else {
-                None
-            }
-        } else if self.y == tail_position.y {
-            if self.x > tail_position.x + 1 {
-                Some(Movement::new(1, 0))
-            } else if self.x < tail_position.x - 1 {
-                Some(Movement::new(-1, 0))
-            } else {
-                None
-            }
-        } else {
-            let (x_diff, y_diff) = (self.x - tail_position.x, self.y - tail_position.y);
+        let (x_diff, y_diff) = (self.x - tail_position.x, self.y - tail_position.y);
 
-            if x_diff.abs() <= 1 && y_diff.abs() <= 1 {
-                None
-            } else {
-                Some(Movement::new(x_diff.signum(), y_diff.signum()))
-            }
-        }
+        (x_diff.abs() > 1 || y_diff.abs() > 1)
+            .then_some(Movement::new(x_diff.signum(), y_diff.signum()))
     }
 }
 
