@@ -12,6 +12,16 @@ struct Program {
     register: i32,
 }
 
+impl Program {
+    fn get_pixel(&self) -> char {
+        if (self.cycle as i32 % 40).abs_diff(self.register) <= 1 {
+            '#'
+        } else {
+            '.'
+        }
+    }
+}
+
 impl FromStr for Instruction {
     type Err = CustomError;
 
@@ -92,44 +102,55 @@ fn part1(instructions: &[Instruction]) -> AnyResult {
 }
 
 fn part2(instructions: &[Instruction]) -> AnyResult {
-    let mut crt = ['.'; 240];
+    use std::cell::RefCell;
 
-    let mut program = Program {
+    let program = RefCell::new(Program {
         cycle: 0,
         register: 1,
-    };
+    });
 
-    for instruction in instructions {
-        match instruction {
+    let crt = instructions
+        .iter()
+        .flat_map(|instruction| match instruction {
             Instruction::AddX(value) => {
-                for _ in 0..2 {
-                    if (program.cycle as i32 % 40).abs_diff(program.register) <= 1 {
-                        crt[program.cycle] = '#';
-                    }
+                let pixels = (0..2).map(|add_cycle| {
+                    let mut program = program.borrow_mut();
+
+                    let pixel = program.get_pixel();
 
                     program.cycle += 1;
-                }
 
-                program.register += value;
+                    if add_cycle == 1 {
+                        program.register += *value;
+                    }
+
+                    pixel
+                });
+
+                Box::new(pixels)
             }
             Instruction::Noop => {
-                if (program.cycle as i32 % 40).abs_diff(program.register) <= 1 {
-                    crt[program.cycle] = '#';
-                }
+                let mut program = program.borrow_mut();
 
-                program.cycle += 1;
+                Box::new(std::iter::once({
+                    let pixel = program.get_pixel();
+
+                    program.cycle += 1;
+
+                    pixel
+                })) as Box<dyn Iterator<Item = char>>
             }
-        }
-    }
+        });
 
-    println!("Part 2 answer:\n");
+    println!("Part 2 answer:");
 
-    for scanline in crt.chunks_exact(40) {
-        for pixel in scanline {
-            print!("{pixel}");
+    for (index, pixel) in crt.enumerate() {
+        if index % 40 == 0 {
+            println!();
         }
-        println!();
+        print!("{pixel}");
     }
+    println!();
 
     Ok(())
 }
