@@ -4,63 +4,24 @@ use adventofcode_2022::{AnyResult, CustomError};
 
 type RcCell<T> = Rc<RefCell<T>>;
 
+type Operation = RcCell<dyn FnMut(&mut Item)>;
+type Test = Rc<dyn Fn(&Item) -> usize>;
+
 #[derive(Clone)]
 struct Monkey {
     inspection_count: usize,
     items: VecDeque<Item>,
-    operation: RcCell<dyn FnMut(&mut Item)>,
-    test: Rc<dyn Fn(&Item) -> usize>,
+    operation: Operation,
+    test: Test,
 }
 
 impl Monkey {
     fn increase_inspection_count(&mut self) {
         self.inspection_count += self.items.len();
     }
-}
 
-impl FromStr for Monkey {
-    type Err = CustomError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let notes: Vec<&str> = s.lines().map(str::trim).collect();
-
-        let (title, index) = notes[0].split_once(' ').ok_or(CustomError {
-            msg: "Received a monkey title without a space.".into(),
-        })?;
-        let is_title_correct = title == "Monkey";
-
-        let is_index_correct =
-            index.ends_with(':') && index.replace(':', "").parse::<usize>().is_ok();
-
-        if !(is_title_correct && is_index_correct) {
-            return Err(CustomError {
-                msg: "Received a monkey with a malformed title.".into(),
-            });
-        }
-
-        let (descriptor, items) = notes[1].split_once(": ").ok_or(CustomError {
-            msg: "Received a monkey item descriptor without `: `.".into(),
-        })?;
-
-        if descriptor != "Starting items" {
-            return Err(CustomError {
-                msg: "Received a malformed monkey item descriptor.".into(),
-            });
-        }
-
-        let items: VecDeque<Item> = items
-            .split(", ")
-            .map(|worry_level| {
-                worry_level
-                    .parse()
-                    .map(|worry_level| Item { worry_level })
-                    .map_err(|_| CustomError {
-                        msg: "Received a non-numeric worry level.".into(),
-                    })
-            })
-            .collect::<Result<_, _>>()?;
-
-        let (descriptor, operation) = notes[2].split_once(": ").ok_or(CustomError {
+    fn validate_operation(operation: &str) -> Result<Operation, CustomError> {
+        let (descriptor, operation) = operation.split_once(": ").ok_or(CustomError {
             msg: "Received a monkey operation descriptor without `: `.".into(),
         })?;
 
@@ -106,7 +67,60 @@ impl FromStr for Monkey {
             })?
         };
 
-        let (descriptor, divisor) = notes[3].rsplit_once(' ').ok_or(CustomError {
+        let operation = Rc::new(RefCell::new(move |item: &mut Item| {
+            item.worry_level = operation_function(item.worry_level, operation_operand);
+        }));
+
+        Ok(operation)
+    }
+
+    fn validate_receiver_monkey(
+        receiver_monkey: &str,
+        monkey_type: bool,
+    ) -> Result<usize, CustomError> {
+        let monkey_type = monkey_type.to_string();
+
+        let (descriptor, monkey_index) = receiver_monkey.rsplit_once(' ').ok_or(CustomError {
+            msg: format!("Received a {monkey_type} monkey without a space.").into(),
+        })?;
+
+        if descriptor != format!("If {monkey_type}: throw to monkey").as_str() {
+            return Err(CustomError {
+                msg: format!("Received a malformed {monkey_type} monkey descriptor.").into(),
+            });
+        }
+
+        monkey_index.parse().map_err(|_| CustomError {
+            msg: format!("Received a {monkey_type} monkey with a non-numeric index.").into(),
+        })
+    }
+
+    fn validate_starting_items(items: &str) -> Result<VecDeque<Item>, CustomError> {
+        let (descriptor, items) = items.split_once(": ").ok_or(CustomError {
+            msg: "Received a monkey item descriptor without `: `.".into(),
+        })?;
+
+        if descriptor != "Starting items" {
+            return Err(CustomError {
+                msg: "Received a malformed monkey item descriptor.".into(),
+            });
+        }
+
+        items
+            .split(", ")
+            .map(|worry_level| {
+                worry_level
+                    .parse()
+                    .map(|worry_level| Item { worry_level })
+                    .map_err(|_| CustomError {
+                        msg: "Received a non-numeric worry level.".into(),
+                    })
+            })
+            .collect::<Result<_, _>>()
+    }
+
+    fn validate_test_condition(test_condition: &str) -> Result<u64, CustomError> {
+        let (descriptor, divisor) = test_condition.rsplit_once(' ').ok_or(CustomError {
             msg: "Received a test condition without a space.".into(),
         })?;
 
@@ -116,51 +130,59 @@ impl FromStr for Monkey {
             });
         }
 
-        let divisor: u64 = divisor.parse().map_err(|_| CustomError {
+        divisor.parse().map_err(|_| CustomError {
             msg: "Received a test with a non-numeric divisor.".into(),
+        })
+    }
+
+    fn validate_title(title: &str) -> Result<(), CustomError> {
+        let (title, index) = title.split_once(' ').ok_or(CustomError {
+            msg: "Received a monkey title without a space.".into(),
         })?;
 
-        let (descriptor, true_monkey_index) = notes[4].rsplit_once(' ').ok_or(CustomError {
-            msg: "Received a true monkey without a space.".into(),
-        })?;
+        let is_title_correct = title == "Monkey";
 
-        if descriptor != "If true: throw to monkey" {
-            return Err(CustomError {
-                msg: "Received a malformed true monkey descriptor.".into(),
-            });
+        let is_index_correct =
+            index.ends_with(':') && index.replace(':', "").parse::<usize>().is_ok();
+
+        if is_title_correct && is_index_correct {
+            Ok(())
+        } else {
+            Err(CustomError {
+                msg: "Received a monkey with a malformed title.".into(),
+            })
         }
+    }
+}
 
-        let true_monkey_index: usize = true_monkey_index.parse().map_err(|_| CustomError {
-            msg: "Received a true monkey with a non-numeric index.".into(),
-        })?;
+impl FromStr for Monkey {
+    type Err = CustomError;
 
-        let (descriptor, false_monkey_index) = notes[5].rsplit_once(' ').ok_or(CustomError {
-            msg: "Received a false monkey without a space.".into(),
-        })?;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let notes: Vec<&str> = s.lines().map(str::trim).collect();
 
-        if descriptor != "If false: throw to monkey" {
-            return Err(CustomError {
-                msg: "Received a malformed false monkey descriptor.".into(),
-            });
-        }
+        Self::validate_title(notes[0])?;
 
-        let false_monkey_index: usize = false_monkey_index.parse().map_err(|_| CustomError {
-            msg: "Received a false monkey with a non-numeric index.".into(),
-        })?;
+        let items = Self::validate_starting_items(notes[1])?;
+        let operation = Self::validate_operation(notes[2])?;
+        let test_condition_divisor = Self::validate_test_condition(notes[3])?;
+
+        let true_monkey_index = Self::validate_receiver_monkey(notes[4], true)?;
+        let false_monkey_index = Self::validate_receiver_monkey(notes[5], false)?;
+
+        let test = Rc::new(move |item: &Item| {
+            if item.worry_level % test_condition_divisor == 0 {
+                true_monkey_index
+            } else {
+                false_monkey_index
+            }
+        });
 
         Ok(Monkey {
             inspection_count: 0,
             items,
-            operation: Rc::new(RefCell::new(move |item: &mut Item| {
-                item.worry_level = operation_function(item.worry_level, operation_operand);
-            })),
-            test: Rc::new(move |item: &Item| {
-                if item.worry_level % divisor == 0 {
-                    true_monkey_index
-                } else {
-                    false_monkey_index
-                }
-            }),
+            operation,
+            test,
         })
     }
 }
