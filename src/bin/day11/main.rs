@@ -22,7 +22,7 @@ fn main() -> AnyResult {
 fn part1(mut monkeys: Vec<Monkey>) -> AnyResult {
     for _ in 0..20 {
         for index in 0..monkeys.len() {
-            let thrower_monkey = unsafe { monkeys.as_mut_ptr().add(index).as_mut().unwrap() };
+            let thrower_monkey = unsafe { &mut *monkeys.as_mut_ptr().add(index) };
 
             thrower_monkey.increase_inspection_count();
 
@@ -36,13 +36,8 @@ fn part1(mut monkeys: Vec<Monkey>) -> AnyResult {
                 let test = &thrower_monkey.test;
                 let receiver_monkey_index = test(&item);
 
-                let receiver_monkey = unsafe {
-                    monkeys
-                        .as_mut_ptr()
-                        .add(receiver_monkey_index)
-                        .as_mut()
-                        .unwrap()
-                };
+                let receiver_monkey =
+                    unsafe { &mut *monkeys.as_mut_ptr().add(receiver_monkey_index) };
 
                 receiver_monkey.items.push_back(item);
             }
@@ -64,7 +59,7 @@ fn part1(mut monkeys: Vec<Monkey>) -> AnyResult {
 fn part2(mut monkeys: Vec<Monkey>) -> AnyResult {
     for _ in 0..10_000 {
         for index in 0..monkeys.len() {
-            let thrower_monkey = unsafe { monkeys.as_mut_ptr().add(index).as_mut().unwrap() };
+            let thrower_monkey = unsafe { &mut *monkeys.as_mut_ptr().add(index) };
 
             thrower_monkey.increase_inspection_count();
 
@@ -78,13 +73,8 @@ fn part2(mut monkeys: Vec<Monkey>) -> AnyResult {
                 let test = &thrower_monkey.test;
                 let receiver_monkey_index = test(&item);
 
-                let receiver_monkey = unsafe {
-                    monkeys
-                        .as_mut_ptr()
-                        .add(receiver_monkey_index)
-                        .as_mut()
-                        .unwrap()
-                };
+                let receiver_monkey =
+                    unsafe { &mut *monkeys.as_mut_ptr().add(receiver_monkey_index) };
 
                 receiver_monkey.items.push_back(item);
             }
