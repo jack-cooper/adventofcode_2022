@@ -14,37 +14,57 @@ struct Grid {
     width: usize,
 }
 
+#[derive(Clone, Copy)]
+enum Traversal {
+    Forward,
+    Reverse,
+}
+
 impl Heightmap {
-    fn bfs(&self) -> Vec<Option<usize>> {
+    fn bfs(&self, traversal: Traversal) -> (Vec<Option<usize>>, Option<usize>) {
         let mut came_from: Vec<Option<usize>> = vec![None; self.grid.elevations.len()];
 
         let mut frontier = VecDeque::new();
 
-        frontier.push_back(self.start_index);
+        let mut end_index = None;
+
+        let (start_index, end_indices) = match traversal {
+            Traversal::Forward => (self.start_index, vec![self.end_index]),
+            Traversal::Reverse => {
+                let lowest_elevations = self
+                    .grid
+                    .elevations
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, &elevation)| (elevation == 'a' as u32).then_some(index))
+                    .collect();
+
+                (self.end_index, lowest_elevations)
+            }
+        };
+
+        frontier.push_back(start_index);
 
         while let Some(index) = frontier.pop_front() {
-            if index == self.end_index {
+            if end_indices.contains(&index) {
+                end_index = Some(index);
                 break;
             }
 
-            frontier.extend(
-                self.grid
-                    .neighbors(index)
-                    .into_iter()
-                    .filter(|&neighbor_index| {
-                        if came_from[neighbor_index].is_none() && neighbor_index != self.start_index
-                        {
-                            came_from[neighbor_index] = Some(index);
+            frontier.extend(self.grid.neighbors(index, traversal).into_iter().filter(
+                |&neighbor_index| {
+                    if came_from[neighbor_index].is_none() && neighbor_index != start_index {
+                        came_from[neighbor_index] = Some(index);
 
-                            true
-                        } else {
-                            false
-                        }
-                    }),
-            );
+                        true
+                    } else {
+                        false
+                    }
+                },
+            ));
         }
 
-        came_from
+        (came_from, end_index)
     }
 }
 
@@ -122,11 +142,12 @@ impl Grid {
         adjacent_indices
     }
 
-    fn neighbors(&self, index: usize) -> Vec<usize> {
+    fn neighbors(&self, index: usize, traversal: Traversal) -> Vec<usize> {
         let mut neighbors = self.adjacent_indices(index);
 
-        neighbors.retain(|&elevation_index| {
-            self.elevations[elevation_index] <= self.elevations[index] + 1
+        neighbors.retain(|&elevation_index| match traversal {
+            Traversal::Forward => self.elevations[elevation_index] <= self.elevations[index] + 1,
+            Traversal::Reverse => self.elevations[elevation_index] >= self.elevations[index] - 1,
         });
 
         neighbors
@@ -145,9 +166,9 @@ fn main() -> AnyResult {
 fn part1(input: &str) -> AnyResult {
     let heightmap: Heightmap = input.parse()?;
 
-    let elevations = heightmap.bfs();
+    let (elevations, end_index) = heightmap.bfs(Traversal::Forward);
 
-    let mut current_index = Some(heightmap.end_index);
+    let mut current_index = end_index;
     let mut steps = 0;
 
     while let Some(index) = current_index {
@@ -163,6 +184,23 @@ fn part1(input: &str) -> AnyResult {
     Ok(())
 }
 
-fn part2(_input: &str) -> AnyResult {
+fn part2(input: &str) -> AnyResult {
+    let heightmap: Heightmap = input.parse()?;
+
+    let (elevations, end_index) = heightmap.bfs(Traversal::Reverse);
+
+    let mut current_index = end_index;
+    let mut steps = 0;
+
+    while let Some(index) = current_index {
+        current_index = elevations[index];
+
+        if current_index.is_some() {
+            steps += 1;
+        }
+    }
+
+    println!("Part 2 answer = {steps}");
+
     Ok(())
 }
