@@ -23,10 +23,6 @@ impl<'a> Simulation<'a> {
         }
     }
 
-    pub fn run(&mut self) {
-        self.run_with_limit_internal(None)
-    }
-
     pub fn height_after_one_trillion_rocks(&mut self) -> u64 {
         let num_jets = self.jets.len() as u64;
         let mut jets = self.jets.iter().cycle();
@@ -161,18 +157,9 @@ impl<'a> Simulation<'a> {
     }
 
     pub fn run_with_limit(&mut self, limit: usize) {
-        self.run_with_limit_internal(Some(limit))
-    }
-
-    fn run_with_limit_internal(&mut self, limit: Option<usize>) {
         let mut jets = self.jets.iter().cycle();
 
-        let range = match limit {
-            Some(limit) => Box::new(0..limit) as Box<dyn Iterator<Item = usize>>,
-            None => Box::new(0..),
-        };
-
-        for index in range {
+        for index in 0..limit {
             self.iteration += 1;
 
             let rock_shape = ROCK_SHAPES[index % ROCK_SHAPES.len()];
